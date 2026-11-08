@@ -32,7 +32,7 @@ button.primary:hover{background:#74240f}
 .day small{font-weight:400;opacity:.95}
 .day a{color:#fff;font-size:12px;text-decoration:underline}
 .row{display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid #eee8da;background:#fff;cursor:grab}
-.stay{margin:0 0 2px 34px;font-size:12px;background:#fbf8ef;border-bottom:1px solid #eee8da}.stay summary{cursor:pointer;padding:5px 6px;color:#8a2c1b;font-weight:600}.stay .st{padding:5px 8px;border-top:1px dashed #e3ded2}.stay .st b{display:block}.stay .st .d{color:#6b665c}.stay .st a{display:inline-block;margin:3px 10px 0 0;color:#1f6f8b}.row.over{outline:2px dashed #8a2c1b}
+.stay{margin:0 0 2px 34px;font-size:12px;background:#fbf8ef;border-bottom:1px solid #eee8da}.stay summary{cursor:pointer;padding:5px 6px;color:#8a2c1b;font-weight:600}.stay .st{padding:5px 8px;border-top:1px dashed #e3ded2}.stay .st b{display:block}.stay .st.best{background:#fff3d6;border-left:3px solid #d6a528}.stay .st .d{color:#6b665c}.stay .st a{display:inline-block;margin:3px 10px 0 0;color:#1f6f8b}.row.over{outline:2px dashed #8a2c1b}
 .row.skipped{opacity:.55}
 .row.fixed{cursor:default}
 .num{flex:0 0 26px;height:26px;border-radius:50%;color:#fff;font-weight:700;font-size:12px;display:grid;place-items:center}
@@ -193,7 +193,7 @@ function drawRoute(P){
 function fetchT(url,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t));}
 
 /* ---------- panel ---------- */
-const stayHtml=id=>{const a=(window.STAYS||{})[id];if(!a||!a.length)return '';return `<details class="stay"><summary>🛏 Stay (${a.length})</summary>${a.map(x=>`<div class="st"><b>${esc(x.n)} ${x.r?'· '+x.r+'★':''}</b><div class="d">${esc(x.d||'')}</div>${x.ph?`<a href="tel:${x.ph.replace(/[^+\d]/g,'')}">📞 ${esc(x.ph)}</a>`:'<span class="d">No number listed · </span>'}<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.n)}&query_place_id=${x.pid}">Google Maps · photos</a></div>`).join('')}</details>`};
+const stayHtml=id=>{const a=(window.STAYS||{})[id];if(!a||!a.length)return '';const best=a.find(x=>x.b);return `<details class="stay"${best?' open':''}><summary>🛏 Stay (${a.length})${best?' · ⭐ Best: '+esc(best.n):''}</summary>${a.map(x=>`<div class="st${x.b?' best':''}"><b>${x.b?'⭐ Best pick · ':''}${esc(x.n)} ${x.r?'· '+x.r+'★':''}</b><div class="d">${esc(x.d||'')}</div>${x.ph?`<a href="tel:${x.ph.replace(/[^+\d]/g,'')}">📞 ${esc(x.ph)}</a>`:'<span class="d">No number listed · </span>'}<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.n)}&query_place_id=${x.pid}">Google Maps · photos</a></div>`).join('')}</details>`};
 function render(){
   const P=plan(),legAt={};
   $('#sKm').textContent=Math.round(P.km).toLocaleString('en-IN');
