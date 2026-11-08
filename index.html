@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Parshwanath Yatra Route Planner</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1c1b19;background:#f6f4ef}
+#app{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(340px,1fr);height:100%}
+#map{height:100%;min-height:300px;z-index:0}
+#panel{overflow-y:auto;padding:14px;background:#fffdf8;border-left:1px solid #e3ded2}
+h1{font-size:18px;margin:0 0 2px}
+.sub{color:#6b665c;font-size:12px;margin-bottom:10px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
+.stat{background:#fff;border:1px solid #e3ded2;border-radius:10px;padding:8px 10px}
+.stat b{display:block;font-size:20px;line-height:1.1}
+.stat span{font-size:11px;color:#6b665c}
+.delta{font-size:12px;margin:2px 0 8px;color:#6b665c}
+.delta.up{color:#b3261e}.delta.down{color:#1e7a3c}
+.badge{display:inline-block;font-size:11px;border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:middle}
+.badge.road{background:#dff3e4;color:#1e6b36}.badge.est{background:#fdebc8;color:#7a5200}
+.controls{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+button{font:inherit;border:1px solid #cfc8b8;background:#fff;border-radius:8px;padding:6px 10px;cursor:pointer}
+button:hover{background:#f3efe4}
+button.primary{background:#8a2c1b;border-color:#8a2c1b;color:#fff}
+button.primary:hover{background:#74240f}
+.maxkm{display:flex;align-items:center;gap:8px;font-size:12px;margin:6px 0 10px}
+.maxkm input{flex:1}
+.day{margin:12px 0 4px;padding:6px 10px;border-radius:8px;color:#fff;font-weight:600;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.day small{font-weight:400;opacity:.95}
+.day a{color:#fff;font-size:12px;text-decoration:underline}
+.row{display:flex;align-items:center;gap:8px;padding:7px 6px;border-bottom:1px solid #eee8da;background:#fff;cursor:grab}
+.stay{margin:0 0 2px 34px;font-size:12px;background:#fbf8ef;border-bottom:1px solid #eee8da}.stay summary{cursor:pointer;padding:5px 6px;color:#8a2c1b;font-weight:600}.stay .st{padding:5px 8px;border-top:1px dashed #e3ded2}.stay .st b{display:block}.stay .st .d{color:#6b665c}.stay .st a{display:inline-block;margin:3px 10px 0 0;color:#1f6f8b}.row.over{outline:2px dashed #8a2c1b}
+.row.skipped{opacity:.55}
+.row.fixed{cursor:default}
+.num{flex:0 0 26px;height:26px;border-radius:50%;color:#fff;font-weight:700;font-size:12px;display:grid;place-items:center}
+.meta{flex:1;min-width:0}
+.meta .n{font-weight:600}
+.meta .d{font-size:12px;color:#6b665c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leg{font-size:12px;color:#6b665c;text-align:right;white-space:nowrap}
+.leg b{color:#1c1b19;font-size:13px}
+.acts{display:flex;gap:2px}
+.acts button{padding:3px 7px;line-height:1}
+.add{margin:6px 0 12px}.add form{display:flex;gap:6px}.add input[type=text]{flex:1;min-width:0;font:inherit;padding:7px 9px;border:1px solid #cfc8b8;border-radius:8px}
+.add .row2{display:flex;gap:8px;margin-top:6px;align-items:center;font-size:12px;color:#6b665c}
+#res{font-size:12px;color:#6b665c;margin-top:4px}#res .hit{display:block;width:100%;text-align:left;margin-top:4px;font-size:12px}
+.browse{margin:0 0 12px;border:1px solid #e3ded2;border-radius:10px;background:#fff;padding:6px 10px}.browse summary{cursor:pointer;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.chips button.act{background:#8a2c1b;border-color:#8a2c1b;color:#fff}
+.bf{display:flex;gap:6px;margin-bottom:6px}.bf input,.bf select{font:inherit;padding:6px 8px;border:1px solid #cfc8b8;border-radius:8px;min-width:0}.bf input{flex:1}
+#bList{max-height:300px;overflow-y:auto;border-top:1px solid #eee8da}.trow{display:flex;align-items:center;gap:8px;padding:6px 2px;border-bottom:1px solid #f1ecdf}.trow .meta{flex:1;min-width:0}.na{font-size:11px;color:#8a857a;white-space:nowrap}.bmeta{font-size:11px;color:#6b665c;margin-top:4px}
+.acts button.on{background:#ffe9b5;border-color:#d6a528}
+h3{font-size:13px;margin:14px 0 4px;color:#6b665c;text-transform:uppercase;letter-spacing:.04em}
+.foot{font-size:11px;color:#7b766b;margin-top:14px}
+.pin{width:28px;height:28px;border-radius:50%;color:#fff;font:700 12px/24px system-ui;text-align:center;border:2px solid #fff;box-shadow:0 1px 5px #0007}
+.pin.off{opacity:.45;width:20px;height:20px;line-height:16px;font-size:10px}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#222;color:#fff;padding:8px 14px;border-radius:8px;opacity:0;pointer-events:none;transition:opacity .25s;z-index:1000;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+@media (max-width:760px){
+ #app{grid-template-columns:1fr;grid-template-rows:42vh 1fr}
+ #panel{border-left:0;border-top:1px solid #e3ded2}
+ .stat b{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <aside id="panel">
+    <h1>Parshwanath Yatra · Route Planner</h1>
+    <div class="sub">Vapi → Sankheshwar → Rajasthan. Reorder, skip or pin stops and the distance updates.<span id="badge" class="badge est">estimating…</span></div>
+    <div class="stats">
+      <div class="stat"><b id="sKm">–</b><span>total km</span></div>
+      <div class="stat"><b id="sTime">–</b><span>driving time</span></div>
+      <div class="stat"><b id="sDays">–</b><span>days (auto)</span></div>
+    </div>
+    <div id="delta" class="delta"></div>
+    <div class="controls">
+      <button class="primary" id="bOpt">Optimise order</button>
+      <button id="bReset">Reset to suggested</button>
+      <button id="bRound">Return to Vapi: on</button>
+      <button id="bFit">Fit map</button>
+      <button id="bCopy">Copy link</button>
+    </div>
+    <label class="maxkm">Max driving per day <input id="maxkm" type="range" min="200" max="700" step="10"> <b id="maxkmv"></b> km</label>
+    <div class="add"><form id="addForm"><input id="q" type="text" placeholder="Add a place to visit (name or lat,lon)" autocomplete="off"><button class="primary" type="submit">Add</button></form><div class="row2"><button type="button" id="bPick">Pick on map</button><span>New stops slot in where they add the least distance.</span></div><div id="res"></div></div>
+    <details class="browse" id="browse"><summary>Browse 108 Parshwanath + major tirths</summary><div class="chips"><button type="button" data-k="all" class="act">All</button><button type="button" data-k="108">108 Parshwanath</button><button type="button" data-k="major">Major tirths</button></div><div class="bf"><input id="bq" type="text" placeholder="Search number or name" autocomplete="off"><select id="bst"><option value="">All states</option></select></div><div class="bmeta"><span id="bCount"></span> · <label><input type="checkbox" id="cDots" checked> show dots on map</label></div><div id="bList">Loading…</div></details>
+    <div id="list"></div>
+    <div class="foot">Drag rows (or use ▲▼) to reorder. 🔒 pinned stops keep their slot when you press Optimise. Distances use OSRM road routing when reachable, otherwise straight-line × 1.3. Driving time excludes darshan and breaks. Temple hours come from Google Maps; please confirm before you travel. The 108 list and its numbering follow jainsite.com; locations marked approx are town or village centres, and a few places could not be found. Place search by OpenStreetMap Nominatim. Map © OpenStreetMap contributors.</div>
+  </aside>
+</div>
+<div id="toast"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="tirths.js"></script>
+<script src="stays.js"></script>
+<script>
+const STOPS=[
+ {id:0,name:'Vapi',tag:'Start / home',lat:20.371,lon:72.905,note:'Start and finish'},
+ {id:1,name:'Vanchhara Parshwanath',tag:'#3',lat:22.0776,lon:72.9502,note:'Padra, Vadodara · open 5:30 AM–8 PM · about 5 km off the highway · stay and bhojanshala'},
+ {id:2,name:'Kalikund Parshwanath',tag:'#12',lat:22.7414,lon:72.4499,note:'Dholka · open 4 AM–8 PM · yatrik bhavan and bhojanshala'},
+ {id:3,name:'Sankheshwar',tag:'Overnight',lat:23.5082,lon:71.7877,note:'Shankheshwar Parshwanath · many dharamshalas and bhojanshalas'},
+ {id:4,name:'Nagfana Parshwanath, Vihar',tag:'#22',lat:23.5428,lon:72.6554,note:'Vihar, near Vijapur · no dharamshala; bhatu and bathing provided'},
+ {id:5,name:'Vighnapahar Parshwanath, Poshina',tag:'#20',lat:24.3747,lon:73.0323,note:'Poshina · open 5 AM–8 PM · AC rooms and bhojanshala'},
+ {id:6,name:'Kumkumrol Parshwanath, Jalore',tag:'#69',lat:25.3438,lon:72.6190,note:'Jalore · in narrow market lanes (use a rickshaw) · stay at the Jain boarding dharamshala 2–3 km away'},
+ {id:7,name:'Ashapuran Parshwanath, Nun',tag:'#70',lat:24.8829,lon:72.5738,note:'Idol shifted to the new campus on the Nun–Jirawala highway, about 1.5 km north of Nun village'},
+ {id:8,name:'Sirodiya Parshwanath, Sirodi',tag:'#71',lat:24.7066,lon:72.6835,note:'Sirodi (Moti), Sirohi · on the highway · dharamshala on prior notice'},
+ {id:9,name:'Posli Parshwanath, Posaliya',tag:'#73',lat:25.0842,lon:72.9833,note:'Posaliya near Sheoganj · temple is in the bazaar area, not on the highway'},
+ {id:10,name:'Kachhulika Parshwanath, Kachholi',tag:'#74',lat:24.6422,lon:72.8852,note:'Kachholi, Pindwara · narrow entry near Unhel; ask a local, do not rely only on GPS'},
+ {id:11,name:'Dada Parshwanath, Juna Beda',tag:'#75',lat:24.9981,lon:73.2167,note:'Juna Beda near Jawai Dam · open 6 AM–8:30 PM · dharamshala and bhojanshala'},
+ {id:12,name:'Hamirpura Parshwanath, Mirpur',tag:'#72',lat:24.7829,lon:72.7864,note:'Mirpur Jain Tirth on SH 27 · very old marble temple · open all day per Google · new tirth with stay 2 km away'}
+];
+const BASE=STOPS.length,MAXC=30;
+const DEFAULT=[1,2,3,8,12,7,6,9,11,10,5,4];
+const DEFAULT_PIN=[1,2,3];
+const DAYCOL=['#8a2c1b','#1f6f8b','#5b7f2b','#7a3e9d','#b8741a','#2b6b5e','#a0305a'];
+const OSRM='https://router.project-osrm.org';
+const $=s=>document.querySelector(s);
+const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const state={order:[...DEFAULT],off:new Set(),pin:new Set(DEFAULT_PIN),round:true,maxKm:520};
+let D,T,mode='est';
+
+const hav=(a,b)=>{const t=x=>x*Math.PI/180,dl=t(b.lat-a.lat),dn=t(b.lon-a.lon);
+  const h=Math.sin(dl/2)**2+Math.cos(t(a.lat))*Math.cos(t(b.lat))*Math.sin(dn/2)**2;return 12742*Math.asin(Math.sqrt(h));};
+function buildEst(){D=STOPS.map(a=>STOPS.map(b=>a===b?0:hav(a,b)*1.3));T=D.map(r=>r.map(d=>d/50*60));mode='est';}
+const fmtT=m=>{m=Math.round(m);return Math.floor(m/60)+'h '+String(m%60).padStart(2,'0')+'m';};
+const inc=()=>state.order.filter(i=>!state.off.has(i));
+const seq=()=>[0,...inc(),...(state.round?[0]:[])];
+
+function plan(){
+  const s=seq(),legs=[];let day=1,acc=0;
+  for(let i=0;i<s.length-1;i++){
+    const km=D[s[i]][s[i+1]],min=T[s[i]][s[i+1]];
+    if(acc>0&&acc+km>state.maxKm){day++;acc=0;}
+    acc+=km;legs.push({from:s[i],to:s[i+1],km,min,day});
+  }
+  return {s,legs,km:legs.reduce((a,l)=>a+l.km,0),min:legs.reduce((a,l)=>a+l.min,0),days:legs.length?legs[legs.length-1].day:0};
+}
+function costOf(order,round){
+  if(!order.length)return 0;let c=D[0][order[0]];
+  for(let i=0;i<order.length-1;i++)c+=D[order[i]][order[i+1]];
+  return c+(round?D[order[order.length-1]][0]:0);
+}
+const gmaps=(ids)=>{
+  const p=i=>STOPS[i].lat+','+STOPS[i].lon;
+  const u='https://www.google.com/maps/dir/?api=1&travelmode=driving&origin='+p(ids[0])+'&destination='+p(ids[ids.length-1]);
+  const w=ids.slice(1,-1).slice(0,9).map(p).join('|');
+  return u+(w?'&waypoints='+encodeURIComponent(w):'');
+};
+
+/* ---------- map ---------- */
+const map=L.map('map',{zoomControl:true}).setView([23.8,72.7],7);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenStreetMap contributors'}).addTo(map);
+const markers=L.layerGroup().addTo(map);
+let line=null,markerById={};
+function setLine(pts,dashed){
+  if(line)map.removeLayer(line);
+  line=L.polyline(pts,{color:'#8a2c1b',weight:4,opacity:.85,dashArray:dashed?'7 8':null}).addTo(map);
+}
+function drawMarkers(P){
+  markers.clearLayers();markerById={};
+  const dayOf={};P.legs.forEach(l=>{if(!(l.to in dayOf)||l.to!==0)dayOf[l.to]=l.day;});
+  let pos=0;
+  inc().forEach(id=>{
+    pos++;const s=STOPS[id],col=DAYCOL[(dayOf[id]-1)%DAYCOL.length];
+    addMarker(s,pos,col,false);
+  });
+  addMarker(STOPS[0],'S','#222',false);
+  state.order.filter(i=>state.off.has(i)).forEach(id=>addMarker(STOPS[id],'×','#888',true));
+}
+function addMarker(s,label,col,off){
+  const m=L.marker([s.lat,s.lon],{icon:L.divIcon({className:'',iconSize:[28,28],iconAnchor:[14,14],
+    html:`<div class="pin${off?' off':''}" style="background:${col}">${label}</div>`})});
+  m.bindPopup(`<b>${esc(s.name)}</b> <i>${esc(s.tag)}</i><br>${esc(s.note)}<br><a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lon}">Open in Google Maps</a>`);
+  m.on('click',()=>{const r=document.querySelector(`[data-row="${s.id}"]`);if(r)r.scrollIntoView({block:'nearest',behavior:'smooth'});});
+  m.addTo(markers);markerById[s.id]=m;
+}
+let routeToken=0,routeTimer;
+function drawRoute(P){
+  setLine(P.s.map(i=>[STOPS[i].lat,STOPS[i].lon]),true);
+  if(mode!=='road')return;
+  clearTimeout(routeTimer);
+  routeTimer=setTimeout(async()=>{
+    const tk=++routeToken;
+    try{
+      const coords=P.s.map(i=>STOPS[i].lon+','+STOPS[i].lat).join(';');
+      const j=await (await fetchT(OSRM+'/route/v1/driving/'+coords+'?overview=full&geometries=geojson',12000)).json();
+      if(tk!==routeToken||j.code!=='Ok')return;
+      setLine(j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]),false);
+    }catch(e){}
+  },450);
+}
+function fetchT(url,ms){const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);return fetch(url,{signal:c.signal}).finally(()=>clearTimeout(t));}
+
+/* ---------- panel ---------- */
+const stayHtml=id=>{const a=(window.STAYS||{})[id];if(!a||!a.length)return '';return `<details class="stay"><summary>🛏 Stay (${a.length})</summary>${a.map(x=>`<div class="st"><b>${esc(x.n)} ${x.r?'· '+x.r+'★':''}</b><div class="d">${esc(x.d||'')}</div>${x.ph?`<a href="tel:${x.ph.replace(/[^+\d]/g,'')}">📞 ${esc(x.ph)}</a>`:'<span class="d">No number listed · </span>'}<a target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(x.n)}&query_place_id=${x.pid}">Google Maps · photos</a></div>`).join('')}</details>`};
+function render(){
+  const P=plan(),legAt={};
+  $('#sKm').textContent=Math.round(P.km).toLocaleString('en-IN');
+  $('#sTime').textContent=fmtT(P.min);
+  $('#sDays').textContent=P.days;
+  const b=$('#badge');b.className='badge '+(mode==='road'?'road':'est');
+  b.textContent=mode==='road'?'road distances':'estimated (straight-line × 1.3)';
+  const base=costOf(DEFAULT,true)+0, cur=costOf(inc(),state.round);
+  const baseCmp=state.round?base:costOf(DEFAULT,false);
+  const diff=cur-baseCmp,dEl=$('#delta');
+  const nC=STOPS.length-BASE;
+  if(state.off.size||nC){dEl.className='delta';dEl.textContent=[nC?nC+' custom stop(s) added':'',state.off.size?state.off.size+' skipped':''].filter(Boolean).join(' · ');}
+  else if(Math.abs(diff)<1){dEl.className='delta';dEl.textContent='Same as the suggested plan';}
+  else{dEl.className='delta '+(diff>0?'up':'down');dEl.textContent=Math.abs(Math.round(diff))+' km '+(diff>0?'longer':'shorter')+' than the suggested plan';}
+  $('#bRound').textContent='Return to Vapi: '+(state.round?'on':'off');
+  $('#maxkmv').textContent=state.maxKm;$('#maxkm').value=state.maxKm;
+
+  let html=`<div class="row fixed" data-row="0"><div class="num" style="background:#222">S</div><div class="meta"><div class="n">Vapi</div><div class="d">Start</div></div></div>`+stayHtml(0);
+  let curDay=0,pos=0;
+  P.legs.forEach((l,i)=>{
+    if(l.day!==curDay){
+      curDay=l.day;
+      const dl=P.legs.filter(x=>x.day===curDay);
+      const ids=[dl[0].from,...dl.map(x=>x.to)];
+      html+=`<div class="day" style="background:${DAYCOL[(curDay-1)%DAYCOL.length]}"><span>Day ${curDay} <small>${Math.round(dl.reduce((a,x)=>a+x.km,0))} km · ${fmtT(dl.reduce((a,x)=>a+x.min,0))}</small></span><a target="_blank" rel="noopener" href="${gmaps(ids)}">Navigate</a></div>`;
+    }
+    const isEnd=i===P.legs.length-1&&state.round;
+    const s=STOPS[l.to],col=DAYCOL[(l.day-1)%DAYCOL.length];
+    if(isEnd){
+      html+=`<div class="row fixed" data-row="end"><div class="num" style="background:#222">E</div><div class="meta"><div class="n">Vapi</div><div class="d">Home</div></div><div class="leg"><b>${Math.round(l.km)} km</b><br>${fmtT(l.min)}</div></div>`;
+    }else{
+      pos++;
+      html+=`<div class="row" draggable="true" data-row="${s.id}"><div class="num" style="background:${col}">${pos}</div>
+        <div class="meta"><div class="n">${esc(s.name)}</div><div class="d">${esc(s.tag)} · ${esc(s.note)}</div></div>
+        <div class="leg"><b>${Math.round(l.km)} km</b><br>${fmtT(l.min)}</div>
+        <div class="acts"><button data-act="up" data-id="${s.id}" title="Move up">▲</button><button data-act="down" data-id="${s.id}" title="Move down">▼</button><button data-act="pin" data-id="${s.id}" class="${state.pin.has(s.id)?'on':''}" title="Pin slot for Optimise">${state.pin.has(s.id)?'🔒':'🔓'}</button>${s.id>=BASE?`<button data-act="del" data-id="${s.id}" title="Remove this stop">🗑</button>`:`<button data-act="skip" data-id="${s.id}" title="Skip this stop">✕</button>`}</div></div>`+stayHtml(s.id);
+    }
+  });
+  const skipped=state.order.filter(i=>state.off.has(i));
+  if(skipped.length){
+    html+='<h3>Skipped (tap + to add back)</h3>';
+    skipped.forEach(id=>{const s=STOPS[id];
+      html+=`<div class="row skipped" data-row="${id}"><div class="num" style="background:#888">×</div><div class="meta"><div class="n">${esc(s.name)}</div><div class="d">${esc(s.tag)}</div></div><div class="acts"><button data-act="skip" data-id="${id}" title="Include">＋</button></div></div>`;});
+  }
+  $('#list').innerHTML=html;
+  drawMarkers(P);drawRoute(P);saveHash();
+  if(TIRTHS.length)renderBrowse();
+}
+
+/* ---------- actions ---------- */
+function moveBy(id,dir){
+  const list=inc(),k=list.indexOf(id),t=list[k+dir];if(t===undefined)return;
+  const a=state.order.indexOf(id),b=state.order.indexOf(t);
+  [state.order[a],state.order[b]]=[state.order[b],state.order[a]];render();
+}
+$('#list').addEventListener('click',e=>{
+  const btn=e.target.closest('button[data-act]');
+  if(btn){
+    const id=+btn.dataset.id,a=btn.dataset.act;
+    if(a==='up')moveBy(id,-1);else if(a==='down')moveBy(id,1);
+    else if(a==='pin'){state.pin.has(id)?state.pin.delete(id):state.pin.add(id);render();}
+    else if(a==='skip'){state.off.has(id)?state.off.delete(id):state.off.add(id);render();}
+    else if(a==='del'){removeCustom(id);}
+    return;
+  }
+  const row=e.target.closest('[data-row]');
+  if(row&&markerById[row.dataset.row]){const m=markerById[row.dataset.row];map.flyTo(m.getLatLng(),Math.max(map.getZoom(),9),{duration:.6});m.openPopup();
+    if(window.innerWidth<=760)window.scrollTo(0,0);}
+});
+let dragId=null;
+$('#list').addEventListener('dragstart',e=>{const r=e.target.closest('.row[draggable]');if(!r)return;dragId=+r.dataset.row;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(dragId));});
+$('#list').addEventListener('dragover',e=>{const r=e.target.closest('.row[draggable]');if(!r||dragId===null)return;e.preventDefault();document.querySelectorAll('.row.over').forEach(x=>x.classList.remove('over'));r.classList.add('over');});
+$('#list').addEventListener('drop',e=>{
+  const r=e.target.closest('.row[draggable]');if(!r||dragId===null)return;e.preventDefault();
+  const t=+r.dataset.row;
+  if(t!==dragId){
+    const from=state.order.indexOf(dragId),tgt=state.order.indexOf(t);
+    state.order.splice(from,1);
+    state.order.splice(from<tgt?state.order.indexOf(t)+1:state.order.indexOf(t),0,dragId);
+  }
+  dragId=null;render();
+});
+$('#list').addEventListener('dragend',()=>{dragId=null;document.querySelectorAll('.row.over').forEach(x=>x.classList.remove('over'));});
+
+function optimise(){
+  const list=inc(),n=list.length;if(n<2){toast('Nothing to optimise');return;}
+  const before=costOf(list,state.round);
+  const pinnedPos=new Map();list.forEach((id,p)=>{if(state.pin.has(id))pinnedPos.set(p,id);});
+  const free=list.filter(id=>!state.pin.has(id));
+  let best=Infinity,bestArr=list.slice();
+  if(free.length<=9){
+    const cur=new Array(n),used=new Array(free.length).fill(false);
+    (function dfs(p,c){
+      if(c>=best)return;
+      if(p===n){const t=c+(state.round?D[cur[n-1]][0]:0);if(t<best){best=t;bestArr=cur.slice();}return;}
+      const prev=p===0?0:cur[p-1];
+      if(pinnedPos.has(p)){const id=pinnedPos.get(p);cur[p]=id;dfs(p+1,c+D[prev][id]);return;}
+      for(let k=0;k<free.length;k++){if(used[k])continue;used[k]=true;cur[p]=free[k];dfs(p+1,c+D[prev][free[k]]);used[k]=false;}
+    })(0,0);
+  }else{
+    const slots=[];for(let p=0;p<n;p++)if(!pinnedPos.has(p))slots.push(p);
+    for(let r=0;r<400;r++){
+      const f=free.slice().sort(()=>Math.random()-.5),arr=new Array(n);let k=0;
+      for(let p=0;p<n;p++)arr[p]=pinnedPos.has(p)?pinnedPos.get(p):f[k++];
+      let imp=true,c=costOf(arr,state.round);
+      while(imp){imp=false;
+        for(let a=0;a<slots.length;a++)for(let b=a+1;b<slots.length;b++){
+          const x=slots[a],y=slots[b];[arr[x],arr[y]]=[arr[y],arr[x]];
+          const c2=costOf(arr,state.round);
+          if(c2<c-1e-9){c=c2;imp=true;}else[arr[x],arr[y]]=[arr[y],arr[x]];
+        }}
+      if(c<best){best=c;bestArr=arr.slice();}
+    }
+  }
+  state.order=bestArr.concat(state.order.filter(i=>state.off.has(i)));
+  render();
+  toast(best<before-0.5?`Optimised: ${Math.round(before)} → ${Math.round(best)} km`:'Already the shortest order for your pins');
+}
+$('#bOpt').onclick=optimise;
+$('#bReset').onclick=()=>{STOPS.length=BASE;state.order=[...DEFAULT];state.off=new Set();state.pin=new Set(DEFAULT_PIN);state.round=true;state.maxKm=520;buildEst();render();fit();loadRoadMatrix();};
+$('#bRound').onclick=()=>{state.round=!state.round;render();};
+$('#bFit').onclick=fit;
+$('#maxkm').oninput=e=>{state.maxKm=+e.target.value;render();};
+$('#bCopy').onclick=async()=>{try{await navigator.clipboard.writeText(location.href);toast('Link copied');}catch(e){toast('Copy the address bar link');}};
+function fit(){map.fitBounds(L.latLngBounds(STOPS.map(s=>[s.lat,s.lon])).pad(.08));}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2600);}
+
+/* ---------- custom stops ---------- */
+const NOM='https://nominatim.openstreetmap.org';
+const shortName=d=>d.split(',').slice(0,2).join(',').trim();
+function addCustom(name,lat,lon,note,tag){
+  lat=+lat;lon=+lon;
+  if(!isFinite(lat)||!isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180){toast('That location is not valid');return null;}
+  if(STOPS.length-BASE>=MAXC){toast('You can add up to '+MAXC+' custom stops');return null;}
+  const id=STOPS.length;
+  STOPS.push({id,name:String(name).slice(0,60),tag:String(tag||'Custom').slice(0,30),lat,lon,note:String(note||'Added by you').slice(0,160)});
+  buildEst();
+  const list=inc(),n=list.length;let bk=n,bc=Infinity;
+  for(let k=0;k<=n;k++){
+    const prev=k===0?0:list[k-1],next=k<n?list[k]:(state.round?0:null);
+    const c=D[prev][id]+(next!==null?D[id][next]-D[prev][next]:0);
+    if(c<bc){bc=c;bk=k;}
+  }
+  if(bk<n)state.order.splice(state.order.indexOf(list[bk]),0,id);else state.order.push(id);
+  render();fit();loadRoadMatrix();
+  toast('Added "'+STOPS[id].name+'" at stop '+(bk+1)+' (+'+Math.round(bc)+' km)');
+  return id;
+}
+function removeCustom(id){
+  if(id<BASE||id>=STOPS.length)return;
+  STOPS.splice(id,1);STOPS.forEach((st,i)=>st.id=i);
+  const m=x=>x>id?x-1:x;
+  state.order=state.order.filter(x=>x!==id).map(m);
+  state.off=new Set([...state.off].filter(x=>x!==id).map(m));
+  state.pin=new Set([...state.pin].filter(x=>x!==id).map(m));
+  buildEst();render();loadRoadMatrix();
+}
+$('#addForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const q=$('#q').value.trim(),res=$('#res');res.innerHTML='';if(!q)return;
+  const m=q.match(/^(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)$/);
+  if(m){if(addCustom('Pinned location ('+(+m[1]).toFixed(3)+', '+(+m[2]).toFixed(3)+')',m[1],m[2]))$('#q').value='';return;}
+  res.textContent='Searching…';
+  try{
+    const j=await (await fetchT(NOM+'/search?format=jsonv2&limit=5&accept-language=en&countrycodes=in&viewbox=68,30,77,20&q='+encodeURIComponent(q),10000)).json();
+    if(!j.length){res.textContent='No match. Try adding the town and state, or paste lat,lon.';return;}
+    res.innerHTML='';
+    j.forEach(pl=>{
+      const b=document.createElement('button');b.type='button';b.className='hit';b.textContent=pl.display_name;
+      b.onclick=()=>{if(addCustom(shortName(pl.display_name),pl.lat,pl.lon,pl.display_name)){res.innerHTML='';$('#q').value='';}};
+      res.appendChild(b);
+    });
+  }catch(err){res.textContent='Search is unavailable. Use "Pick on map" or paste lat,lon.';}
+});
+let picking=false;
+$('#bPick').onclick=()=>{
+  picking=!picking;$('#map').style.cursor=picking?'crosshair':'';
+  toast(picking?'Tap the map where you want to stop':'Cancelled');
+  if(picking&&window.innerWidth<=760)window.scrollTo(0,0);
+};
+map.on('click',async e=>{
+  if(!picking)return;picking=false;$('#map').style.cursor='';
+  const lat=e.latlng.lat,lng=e.latlng.lng;
+  const id=addCustom('Map pin ('+lat.toFixed(3)+', '+lng.toFixed(3)+')',lat,lng,'Dropped on the map');
+  if(id===null)return;
+  try{
+    const j=await (await fetchT(NOM+'/reverse?format=jsonv2&zoom=14&accept-language=en&lat='+lat+'&lon='+lng,8000)).json();
+    if(j&&j.display_name&&STOPS[id]&&STOPS[id].lat===lat){STOPS[id].name=shortName(j.display_name);STOPS[id].note=j.display_name.slice(0,160);render();}
+  }catch(err){}
+});
+
+/* ---------- tirth database ---------- */
+let TIRTHS=[];const bf={k:'all',q:'',st:''};
+const dots=L.layerGroup().addTo(map);
+const lbl=t=>((t.n?'#'+t.n+' ':'')+t.nm).slice(0,60);
+const inPlan=t=>t.p!==undefined||(t.la!==undefined&&STOPS.slice(BASE).some(st=>st.name===lbl(t)));
+function addTirth(i){
+  const t=TIRTHS[i];if(!t)return;
+  if(t.la===undefined){toast('Location not found yet');return;}
+  if(inPlan(t)){toast('Already in your plan');return;}
+  addCustom(lbl(t),t.la,t.lo,t.pl+' · '+t.st+(t.c==='a'?' (approximate location)':''),t.k==='108'?'108 #'+t.n:'Major tirth');
+}
+function drawDots(){
+  dots.clearLayers();
+  TIRTHS.forEach(t=>{
+    if(t.la===undefined)return;
+    const col=t.k==='108'?'#c4552f':'#1f6f8b';
+    L.circleMarker([t.la,t.lo],{radius:5,color:col,weight:1.5,fillColor:col,fillOpacity:t.c==='a'?.25:.75})
+      .bindPopup(`<b>${esc(lbl(t))}</b><br>${esc(t.pl)} · ${esc(t.st)}${t.c==='a'?'<br><i>approximate location</i>':''}<br><button onclick="addTirth(${t.i})">Add to route</button>`)
+      .addTo(dots);
+  });
+}
+function renderBrowse(){
+  const q=bf.q.toLowerCase(),box=$('#bList'),top=box.scrollTop;
+  const rows=TIRTHS.filter(t=>(bf.k==='all'||(bf.k==='108'&&t.k==='108')||(bf.k==='major'&&(t.k==='major'||t.m)))&&(!bf.st||t.st===bf.st)&&(!q||(lbl(t)+' '+t.pl).toLowerCase().includes(q)));
+  $('#bCount').textContent=rows.length+' shown';
+  box.innerHTML=rows.map(t=>{
+    const has=t.la!==undefined;
+    const act=!has?'<span class="na">location not found</span>':inPlan(t)?'<span class="na">in plan</span>':`<button data-i="${t.i}">Add</button>`;
+    return `<div class="trow"><div class="meta"><div class="n">${esc(lbl(t))}</div><div class="d">${esc(t.pl)} · ${esc(t.st)}${t.c==='a'?' · approx':''}${t.m?' · major':''}</div></div>${act}</div>`;
+  }).join('')||'<div class="na">No match</div>';
+  box.scrollTop=top;
+}
+async function loadTirths(){
+  try{
+    TIRTHS=window.TIRTHS_DATA||[];if(!TIRTHS.length)throw 0;
+    TIRTHS.forEach((t,i)=>t.i=i);
+    const sel=$('#bst');[...new Set(TIRTHS.map(t=>t.st))].sort().forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);});
+    drawDots();renderBrowse();
+  }catch(e){$('#bList').textContent='Tirth list could not be loaded.';}
+}
+$('#bList').addEventListener('click',e=>{const b=e.target.closest('button[data-i]');if(b)addTirth(+b.dataset.i);});
+document.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>{bf.k=b.dataset.k;document.querySelectorAll('.chips button').forEach(x=>x.classList.toggle('act',x===b));renderBrowse();});
+$('#bq').oninput=e=>{bf.q=e.target.value;renderBrowse();};
+$('#bst').onchange=e=>{bf.st=e.target.value;renderBrowse();};
+$('#cDots').onchange=e=>{e.target.checked?dots.addTo(map):map.removeLayer(dots);};
+
+/* ---------- url state ---------- */
+const lst=a=>[...a].join('.');
+function saveHash(){
+  const cs=STOPS.slice(BASE).map(st=>[st.name,+st.lat.toFixed(5),+st.lon.toFixed(5),st.tag]);
+  const h=`o=${lst(state.order)}&x=${lst(state.off)}&p=${lst(state.pin)}&r=${state.round?1:0}&m=${state.maxKm}`+(cs.length?'&c='+encodeURIComponent(JSON.stringify(cs)):'');
+  try{history.replaceState(null,'','#'+h);}catch(e){}
+}
+function loadHash(){
+  try{
+    const q=new URLSearchParams(location.hash.slice(1));if(!q.get('o'))return;
+    const nums=v=>v?v.split('.').filter(x=>x!=='').map(Number):[];
+    const cq=q.get('c');
+    if(cq){try{JSON.parse(cq).slice(0,MAXC).forEach(([n,la,lo,tg])=>{
+      la=+la;lo=+lo;
+      if(isFinite(la)&&isFinite(lo)&&Math.abs(la)<=90&&Math.abs(lo)<=180)STOPS.push({id:STOPS.length,name:String(n).slice(0,60),tag:String(tg||'Custom').slice(0,30),lat:la,lon:lo,note:'Added by you'});
+    });}catch(e){}}
+    const expected=[...DEFAULT,...STOPS.slice(BASE).map(st=>st.id)];
+    const o=nums(q.get('o'));
+    const same=o.length===expected.length&&[...o].sort((a,b)=>a-b).join()===[...expected].sort((a,b)=>a-b).join();
+    state.order=same?o:expected;
+    state.off=new Set(nums(q.get('x')).filter(i=>state.order.includes(i)&&i<BASE));
+    state.pin=new Set(nums(q.get('p')).filter(i=>state.order.includes(i)));
+    state.round=q.get('r')!=='0';
+    const m=+q.get('m');if(m>=200&&m<=700)state.maxKm=m;
+  }catch(e){}
+}
+
+/* ---------- boot ---------- */
+let mtok=0;
+async function loadRoadMatrix(){
+  const tk=++mtok;
+  try{
+    const coords=STOPS.map(s=>s.lon+','+s.lat).join(';');
+    const j=await (await fetchT(OSRM+'/table/v1/driving/'+coords+'?annotations=distance,duration',12000)).json();
+    if(tk!==mtok)return;
+    if(j.code!=='Ok'||!j.distances||!j.durations||j.distances.length!==STOPS.length)throw 0;
+    const ok=j.distances.every(r=>r.every(v=>typeof v==='number'));if(!ok)throw 0;
+    D=j.distances.map(r=>r.map(v=>v/1000));T=j.durations.map(r=>r.map(v=>v/60));mode='road';
+    render();
+  }catch(e){toast('Live road routing unavailable; using estimates');}
+}
+loadHash();buildEst();render();fit();loadRoadMatrix();loadTirths();
+</script>
+</body>
+</html>
